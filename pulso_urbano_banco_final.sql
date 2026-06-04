@@ -82,7 +82,7 @@
 --
 -- Abaixo: confirmação do DDL real para documentação da entrega.
 
-/*
+
   -- USUARIO (domínio Java)
   CREATE TABLE usuario (
     id_usuario        NUMBER CONSTRAINT pk_usuario PRIMARY KEY
@@ -198,7 +198,7 @@
       NIVEL_ALERTA IN ('ATENCAO','ALERTA','EMERGENCIA')
     )
   );
-*/
+
 
 -- ============================================================
 -- SEÇÃO 3 — DML (INSERT DE DADOS DE TESTE)
@@ -559,10 +559,7 @@ FROM score_diario s, usuario u
 WHERE s.id_zona=5 AND s.dt_score=TRUNC(SYSDATE)-10
   AND u.email='beatriz.oliveira@gmail.com' AND ROWNUM=1;
   
-  SELECT 'usuario'      AS tabela, COUNT(*) FROM usuario      UNION ALL
-SELECT 'zona_cidade'  AS tabela, COUNT(*) FROM zona_cidade  UNION ALL
-SELECT 'score_diario' AS tabela, COUNT(*) FROM score_diario UNION ALL
-SELECT 'recomendacao' AS tabela, COUNT(*) FROM recomendacao;
+
 
 -- ---- 3.5 LOG_CONSULTA (8 registros) ----
 INSERT INTO log_consulta (id_zona, endpoint, ip_origem)
@@ -1381,6 +1378,7 @@ END registrar_recomendacao;
 CREATE OR REPLACE PROCEDURE processar_lote_zonas AS
     v_ok    NUMBER := 0;
     v_erro  NUMBER := 0;
+    v_msg   VARCHAR2(200);
 BEGIN
     DBMS_OUTPUT.PUT_LINE('=== Lote diário: ' || TO_CHAR(SYSDATE,'DD/MM/YYYY HH24:MI') || ' ===');
     FOR z IN (SELECT id_zona FROM zona_cidade WHERE ativo = 1) LOOP
@@ -1389,8 +1387,9 @@ BEGIN
             v_ok := v_ok + 1;
         EXCEPTION WHEN OTHERS THEN
             v_erro := v_erro + 1;
+            v_msg := SUBSTR(SQLERRM, 1, 150);
             INSERT INTO log_consulta (id_zona, endpoint, ip_origem)
-            VALUES (z.id_zona, 'LOTE/ERRO: ' || SUBSTR(SQLERRM,1,150), 'INTERNAL');
+            VALUES (z.id_zona, 'LOTE/ERRO: ' || v_msg, 'INTERNAL');
         END;
     END LOOP;
     DBMS_OUTPUT.PUT_LINE('OK: ' || v_ok || ' | Erros: ' || v_erro);
@@ -1956,5 +1955,4 @@ FROM DUAL;
 
 -- ============================================================
 -- FIM DO ARQUIVO — PULSO URBANO GS 2026/1
--- Felipe Ferrete · RM 562999
 -- ============================================================
