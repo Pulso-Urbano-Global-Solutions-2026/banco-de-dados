@@ -310,7 +310,39 @@ INSERT INTO usuario (nome, email, hash_senha, faz_exercicio, tem_crianca, tem_pr
 VALUES ('Bianca Azevedo Pinto','bianca.azevedo@terra.com.br',
         '$2a$12$QxRlJ1nKpT8vWsHmZdE3oOcB9yXiN5fP4gDkM2tU7wVaL6s0eYhAI', 0, 0, 1, 'USER');
 
--- ---- 3.2 LEITURAS_SATELITE (28 registros) ----
+-- ---- 3.2 ZONA_CIDADE (5 registros — pai de leitura_satelite e score_diario) ----
+INSERT INTO zona_cidade (nome, municipio, lat, lon, ativo)
+VALUES ('Centro', 'São Paulo', -23.5505, -46.6333, 1);
+
+INSERT INTO zona_cidade (nome, municipio, lat, lon, ativo)
+VALUES ('Zona Leste', 'São Paulo', -23.5453, -46.4769, 1);
+
+INSERT INTO zona_cidade (nome, municipio, lat, lon, ativo)
+VALUES ('Zona Sul', 'São Paulo', -23.6273, -46.6566, 1);
+
+INSERT INTO zona_cidade (nome, municipio, lat, lon, ativo)
+VALUES ('Zona Norte', 'São Paulo', -23.4733, -46.6272, 1);
+
+INSERT INTO zona_cidade (nome, municipio, lat, lon, ativo)
+VALUES ('Zona Oeste', 'São Paulo', -23.5614, -46.7172, 1);
+
+-- ---- 3.2b ZONA_REFERENCIA_NET (5 registros — pai de alerta_historico) ----
+INSERT INTO ZONA_REFERENCIA_NET (ID_ZONA, NOME, MUNICIPIO)
+VALUES (1, 'Centro', 'São Paulo');
+
+INSERT INTO ZONA_REFERENCIA_NET (ID_ZONA, NOME, MUNICIPIO)
+VALUES (2, 'Zona Leste', 'São Paulo');
+
+INSERT INTO ZONA_REFERENCIA_NET (ID_ZONA, NOME, MUNICIPIO)
+VALUES (3, 'Zona Sul', 'São Paulo');
+
+INSERT INTO ZONA_REFERENCIA_NET (ID_ZONA, NOME, MUNICIPIO)
+VALUES (4, 'Zona Norte', 'São Paulo');
+
+INSERT INTO ZONA_REFERENCIA_NET (ID_ZONA, NOME, MUNICIPIO)
+VALUES (5, 'Zona Oeste', 'São Paulo');
+
+-- ---- 3.3 LEITURAS_SATELITE (28 registros) ----
 -- tipo_dado: NO2 | TEMP_SUPERFICIE (conforme CHECK real)
 -- satelite: SENTINEL_5P | ECOSTRESS
 -- Zona 1 = Centro, 2 = Zona Leste, 3 = Zona Sul, 4 = Zona Norte, 5 = Zona Oeste
@@ -526,6 +558,11 @@ SELECT s.id_score, u.id_usuario,
 FROM score_diario s, usuario u
 WHERE s.id_zona=5 AND s.dt_score=TRUNC(SYSDATE)-10
   AND u.email='beatriz.oliveira@gmail.com' AND ROWNUM=1;
+  
+  SELECT 'usuario'      AS tabela, COUNT(*) FROM usuario      UNION ALL
+SELECT 'zona_cidade'  AS tabela, COUNT(*) FROM zona_cidade  UNION ALL
+SELECT 'score_diario' AS tabela, COUNT(*) FROM score_diario UNION ALL
+SELECT 'recomendacao' AS tabela, COUNT(*) FROM recomendacao;
 
 -- ---- 3.5 LOG_CONSULTA (8 registros) ----
 INSERT INTO log_consulta (id_zona, endpoint, ip_origem)
