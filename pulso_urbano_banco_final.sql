@@ -1,92 +1,17 @@
--- ============================================================
--- PULSO URBANO — BANCO DE DADOS FINAL
--- Global Solution 2026/1 · FIAP · Turmas de Fevereiro
--- Disciplina: Mastering Relational and Non-Relational Database
--- Felipe Ferrete · RM 562999
--- ============================================================
--- IMPORTANTE: Este arquivo foi gerado sobre o schema unificado
--- real (puSCHEMA.sql v1.0). Os nomes de tabelas, colunas e
--- sequences são idênticos aos usados pelas APIs Java e .NET.
--- Execute APÓS o schema unificado já estar criado no banco.
--- ============================================================
+set serveroutput on
+set verify off
 
--- ============================================================
--- SEÇÃO 1 — LEVANTAMENTO DE REQUISITOS
--- ============================================================
-
--- PROBLEMA ABORDADO:
--- A população de São Paulo é exposta diariamente a níveis elevados
--- de poluição atmosférica (NO₂) e ilhas de calor urbano sem acesso
--- fácil a informações consolidadas sobre qualidade ambiental do
--- seu bairro. Dados orbitais de satélites como Sentinel-5P (ESA) e
--- ECOSTRESS (NASA) existem e são públicos, mas complexos demais para
--- o cidadão comum. O Pulso Urbano resolve isso: transforma dados
--- orbitais em score 0-100 de saúde ambiental por zona da cidade,
--- personalizado pelo perfil de saúde do usuário.
-
--- OBJETIVOS DA SOLUÇÃO:
--- 1. Ingerir leituras de NO₂ e temperatura superficial via satélite
---    por zona monitorada de São Paulo
--- 2. Calcular diariamente um score ambiental (0-100) por zona
--- 3. Classificar o score em BOM / MODERADO / RUIM / CRITICO
--- 4. Gerar recomendações personalizadas com base no perfil do usuário
--- 5. Emitir alertas automáticos para zonas críticas (.NET API)
--- 6. Manter auditoria completa de todas as consultas (LOG_CONSULTA)
-
--- REGRAS DE NEGÓCIO:
--- RN01: scoreNo2  = max(0, 1 - no2_ppb / 50.0)
---       scoreTemp = max(0, 1 - max(0, (tempC - 30) / 20))
---       score     = round((scoreNo2 * 0.60 + scoreTemp * 0.40) * 100, 1)
--- RN02: score >= 80 → BOM
--- RN03: score >= 60 e < 80 → MODERADO
--- RN04: score >= 40 e < 60 → RUIM
--- RN05: score < 40 → CRITICO
--- RN06: Limite OMS para NO₂ é 25 ppb — leituras acima exigem alerta
--- RN07: Temperatura de conforto é 30°C — acima disso penaliza o score
--- RN08: Usuários com problema respiratório recebem recomendações
---       mais restritivas
--- RN09: Usuários com crianças recebem avisos específicos sobre
---       exposição infantil
--- RN10: Cada zona pode ter apenas um score por data (dt_score)
--- RN11: valor_score deve estar entre 0 e 100 (CHECK constraint)
--- RN12: Todo INSERT em score_diario gera log automático (trigger)
--- RN13: Alerts gerenciados pelo .NET API via ALERTA_HISTORICO
-
--- PROCESSOS AUTOMATIZADOS:
--- PA01: trg_valida_score valida score e classificação (BEFORE INSERT/UPDATE)
--- PA02: trg_log_score_consulta registra auditoria (AFTER INSERT)
--- PA03: Procedure calcular_score_zona processa leituras por zona
--- PA04: Procedure registrar_recomendacao gera recomendação por perfil
--- PA05: Package PKG_PULSO_URBANO encapsula lógica central
-
--- INDICADORES CALCULADOS:
--- IC01: Score diário por zona (0-100)
--- IC02: Média de score por zona nos últimos N dias
--- IC03: Ranking de zonas mais poluídas (média NO₂)
--- IC04: Quantidade de alertas por zona e período
--- IC05: Usuários vulneráveis em zonas críticas
-
--- ============================================================
--- SEÇÃO 2 — DDL
--- (Compatível com schema unificado real — sem recriar estrutura
---  já existente; DROP/CREATE apenas em tabelas de apoio novas)
--- ============================================================
-
--- As 8 tabelas principais já foram criadas pelo puSCHEMA.sql:
--- USUARIO, ZONA_CIDADE, LEITURA_SATELITE, SCORE_DIARIO,
--- RECOMENDACAO, LOG_CONSULTA, ZONA_REFERENCIA_NET, ALERTA_HISTORICO
---
--- As sequences existentes são:
--- seq_usuario, seq_zona, seq_score, seq_recomendacao, seq_log (Java)
--- SEQ_ZONA_REFERENCIA, SEQ_ALERTA_HISTORICO (HiLo .NET)
---
--- Abaixo: confirmação do DDL real para documentação da entrega.
-
+CREATE SEQUENCE seq_usuario START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE seq_zona START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE seq_score START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE seq_recomendacao START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE seq_log START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
+CREATE SEQUENCE seq_alerta_historico START WITH 1 INCREMENT BY 1 NOCACHE NOCYCLE;
 
   -- USUARIO (domínio Java)
   CREATE TABLE usuario (
-    id_usuario        NUMBER CONSTRAINT pk_usuario PRIMARY KEY
-                      DEFAULT seq_usuario.NEXTVAL,
+    id_usuario        NUMBER DEFAULT seq_usuario.NEXTVAL
+                      CONSTRAINT pk_usuario PRIMARY KEY,
     nome              VARCHAR2(150)  NOT NULL,
     email             VARCHAR2(200)  NOT NULL CONSTRAINT uq_usuario_email UNIQUE,
     hash_senha        VARCHAR2(255)  NOT NULL,
@@ -105,8 +30,8 @@
 
   -- ZONA_CIDADE (domínio Java)
   CREATE TABLE zona_cidade (
-    id_zona   NUMBER        CONSTRAINT pk_zona PRIMARY KEY
-              DEFAULT seq_zona.NEXTVAL,
+    id_zona   NUMBER        DEFAULT seq_zona.NEXTVAL
+              CONSTRAINT pk_zona PRIMARY KEY,
     nome      VARCHAR2(100) NOT NULL,
     municipio VARCHAR2(100) DEFAULT 'São Paulo',
     lat       NUMBER(9,6),
@@ -134,8 +59,8 @@
 
   -- SCORE_DIARIO (domínio Java)
   CREATE TABLE score_diario (
-    id_score      NUMBER       CONSTRAINT pk_score PRIMARY KEY
-                  DEFAULT seq_score.NEXTVAL,
+    id_score      NUMBER       DEFAULT seq_score.NEXTVAL
+                  CONSTRAINT pk_score PRIMARY KEY,
     id_zona       NUMBER       NOT NULL,
     dt_score      DATE         NOT NULL,
     valor_score   NUMBER(5,2)  NOT NULL,
@@ -150,8 +75,8 @@
 
   -- RECOMENDACAO (domínio Java)
   CREATE TABLE recomendacao (
-    id_rec      NUMBER         CONSTRAINT pk_recomendacao PRIMARY KEY
-                DEFAULT seq_recomendacao.NEXTVAL,
+    id_rec      NUMBER         DEFAULT seq_recomendacao.NEXTVAL
+                CONSTRAINT pk_recomendacao PRIMARY KEY,
     id_score    NUMBER         NOT NULL,
     id_usuario  NUMBER         NOT NULL,
     texto       VARCHAR2(1000) NOT NULL,
@@ -164,8 +89,8 @@
 
   -- LOG_CONSULTA (domínio Java)
   CREATE TABLE log_consulta (
-    id_log      NUMBER        CONSTRAINT pk_log PRIMARY KEY
-                DEFAULT seq_log.NEXTVAL,
+    id_log      NUMBER        DEFAULT seq_log.NEXTVAL
+                CONSTRAINT pk_log PRIMARY KEY,
     id_usuario  NUMBER,
     id_zona     NUMBER,
     endpoint    VARCHAR2(200),
@@ -1925,6 +1850,7 @@ ORDER BY z.nome, no2.dt_captura DESC;
   );
   // Consultas por zona e período para relatórios gerenciais
 */
+
 
 -- ============================================================
 -- VERIFICAÇÃO FINAL
